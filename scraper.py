@@ -95,7 +95,19 @@ class NaverSearchCrawler:
             if not title or len(title) < 3:
                 continue
 
-            # fds-ugc 조상 블록 탐색 (블로그명·날짜·링크가 모두 여기 안에 있음)
+            # 개별 포스트 링크: span에서 위로 올라가며 가장 가까운 <a> 탐색
+            link = None
+            el = span
+            for _ in range(8):
+                el = el.parent
+                if el is None:
+                    break
+                if el.name == 'a' and el.get('href') and any(
+                        d in el['href'] for d in ('blog.naver', 'cafe.naver', 'in.naver')):
+                    link = el
+                    break
+
+            # fds-ugc 조상 블록 탐색 (블로그명·날짜가 여기 안에 있음)
             block = span
             for _ in range(12):
                 block = block.parent
@@ -104,9 +116,8 @@ class NaverSearchCrawler:
                 if block.get('class') and any('fds-ugc' in c for c in block.get('class', [])):
                     break
 
-            # 포스트 링크
-            link = None
-            if block:
+            # URL이 없으면 fds-ugc 블록의 첫 번째 링크를 fallback으로 사용
+            if not link and block:
                 link = block.find('a', href=lambda h: h and any(
                     d in h for d in ('blog.naver', 'cafe.naver', 'in.naver')))
 
