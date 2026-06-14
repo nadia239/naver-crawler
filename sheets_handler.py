@@ -152,12 +152,7 @@ class GoogleSheetsHandler:
         return None
 
     def upload_results(self, results):
-        """
-        연결 → 헤더 설정 → 데이터 추가를 한 번에 처리
-
-        Returns:
-            str | None: 성공 시 스프레드시트 URL, 실패 시 None
-        """
+        """키워드별 시트로 분리해서 업로드 (연결 → 시트 생성 → 헤더 → 데이터)"""
         if not self.connect():
             return None
 
@@ -165,14 +160,19 @@ class GoogleSheetsHandler:
             if not self.create_spreadsheet():
                 return None
 
-        if not self.ensure_sheet_exists():
-            return None
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        for item in results:
+            grouped[item['keyword']].append(item)
 
-        self.setup_header()
+        for keyword, items in grouped.items():
+            self.sheet_name = keyword
+            if not self.ensure_sheet_exists():
+                continue
+            self.setup_header()
+            self.append_results(items)
+            self.logger.info(f"[{keyword}] {len(items)}개 저장")
 
-        if self.append_results(results):
-            url = self.get_sheet_url()
-            self.logger.info(f"🔗 스프레드시트 URL: {url}")
-            return url
-
-        return None
+        url = self.get_sheet_url()
+        self.logger.info(f"🔗 스프레드시트 URL: {url}")
+        return url
